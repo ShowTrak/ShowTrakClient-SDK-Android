@@ -5,6 +5,7 @@ import android.content.Context
 import android.os.SystemClock
 import org.json.JSONObject
 import java.io.RandomAccessFile
+import java.util.Locale
 
 /**
  * Collects real device metrics for the heartbeat. The SDK never fabricates
@@ -24,7 +25,10 @@ internal class MetricsCollector(context: Context) {
         val vitals = JSONObject()
         cpuUsagePercent()?.let { vitals.put("CPU", JSONObject().put("UsagePercentage", it)) }
         ramUsage()?.let { vitals.put("Ram", it) }
-        vitals.put("Uptime", JSONObject().put("Seconds", SystemClock.elapsedRealtime() / 1000))
+        vitals.put(
+            "Uptime",
+            JSONObject().put("Formatted", formatUptime(SystemClock.elapsedRealtime() / 1000)),
+        )
         return vitals
     }
 
@@ -33,16 +37,32 @@ internal class MetricsCollector(context: Context) {
             val am = appContext.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
             val info = ActivityManager.MemoryInfo()
             am.getMemoryInfo(info)
-            val total = info.totalMem.toDouble()
-            val used = (info.totalMem - info.availMem).toDouble()
-            val percent = if (total > 0) Math.round(used / total * 100.0) else 0L
+            val total = info.totalMem
+            val used = info.totalMem - info.availMem
+            val percent = if (total > 0) used.toDouble() / total.toDouble() * 100.0 else 0.0
+            // Field names and types are fixed by RamVitals in the ShowTrak wire
+            // protocol: bytes as numbers, and the percentage as a two-decimal
+            // STRING. Sending a number here fails the server's heartbeat
+            // validation outright, which silently leaves the device offline.
             JSONObject()
-                .put("UsagePercentage", percent)
-                .put("TotalBytes", info.totalMem)
-                .put("UsedBytes", info.totalMem - info.availMem)
+                .put("Total", total)
+                .put("Used", used)
+                .put("UsagePercentage", String.format(Locale.US, "%.2f", percent))
         } catch (_: Exception) {
             null
         }
+    }
+
+    /** Uptime as `HH:mm:ss`, matching UptimeVitals in the wire protocol. */
+    private fun formatUptime(totalSeconds: Long): String {
+        val safe = if (totalSeconds > 0) totalSeconds else 0
+        return String.format(
+            Locale.US,
+            "%02d:%02d:%02d",
+            safe / 3600,
+            (safe % 3600) / 60,
+            safe % 60,
+        )
     }
 
     private fun cpuUsagePercent(): Long? {
