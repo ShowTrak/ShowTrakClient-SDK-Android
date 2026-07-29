@@ -222,6 +222,9 @@ class ShowTrakClient(context: Context) {
                     // drawn for them anyway.
                     .put("Icon", event.options.resolvedIcon)
                     .put("HasFeedback", event.options.hasFeedback)
+                    // Lets the server size its own watchdog around this
+                    // handler's budget instead of guessing.
+                    .put("TimeoutMs", event.options.timeoutMs)
             )
         }
         s.emit("RegisterActions", array)
@@ -259,6 +262,75 @@ class ShowTrakClient(context: Context) {
         }, 0, 2, TimeUnit.SECONDS)
     }
 
+    /**
+     * The [Ack] handed to one triggered event. Resolution happens exactly once,
+     * whichever of success, error or the timeout gets there first, and every
+     * method is callable from any thread.
+     */
+    private inner class EventAck(
+        override val requestId: String,
+        override val eventId: String,
+        private val options: EventOptions,
+    ) : Ack {
+
+        private val lock = Any()
+        private var status: AckStatus = AckStatus.UNRESOLVED
+        private var timeoutTask: ScheduledFuture<*>? = null
+
+        /** Start the handler's clock. Called before the handler runs. */
+        fun arm() {
+            val task = scheduler.schedule(
+                {
+                    resolve(
+                        AckStatus.RESOLVED_TIMEOUT,
+                        "Handler did not respond within ${options.timeoutMs}ms"
+                    )
+                },
+                options.timeoutMs,
+                TimeUnit.MILLISECONDS,
+            )
+            synchronized(lock) {
+                // A handler that resolved before we got here must not leave a
+                // timer running behind it.
+                if (status != AckStatus.UNRESOLVED) task.cancel(false) else timeoutTask = task
+            }
+        }
+
+        override fun success() = resolve(AckStatus.RESOLVED_SUCCESS, null)
+
+        override fun error(message: String) =
+            resolve(AckStatus.RESOLVED_ERROR, message.trim().ifEmpty { "Handler error" })
+
+        override fun isResolved(): Boolean = getStatus() != AckStatus.UNRESOLVED
+
+        override fun getStatus(): AckStatus = synchronized(lock) { status }
+
+        override fun feedback(message: String) {
+            // Progress on an event nobody is waiting for has nowhere to go: the
+            // server closed the row the moment it dispatched.
+            if (!options.hasFeedback) return
+            val text = message.trim()
+            if (text.isEmpty()) return
+            synchronized(lock) { if (status != AckStatus.UNRESOLVED) return }
+            socket?.takeIf { it.connected() }?.emit(
+                "IntegratedEventFeedback",
+                requestId,
+                text.take(EventOptions.MAX_FEEDBACK_LENGTH),
+            )
+        }
+
+        private fun resolve(newStatus: AckStatus, error: String?) {
+            synchronized(lock) {
+                if (status != AckStatus.UNRESOLVED) return
+                status = newStatus
+                timeoutTask?.cancel(false)
+                timeoutTask = null
+            }
+            if (!options.hasFeedback) return
+            socket?.emit("IntegratedEventResponse", requestId, error ?: JSONObject.NULL)
+        }
+    }
+
     private fun handleTrigger(args: Array<out Any?>?) {
         val requestId = args?.getOrNull(0)?.toString() ?: return
         val eventId = args.getOrNull(1)?.toString() ?: return
@@ -267,24 +339,8 @@ class ShowTrakClient(context: Context) {
             socket?.emit("IntegratedEventResponse", requestId, "Event not registered")
             return
         }
-        val ack = object : Ack {
-            override val requestId = requestId
-            override val eventId = eventId
-            private var done = false
-            override fun success() = complete(null)
-            override fun error(message: String) = complete(message)
-            private fun complete(error: String?) {
-                if (done) return
-                done = true
-                if (event.options.hasFeedback) {
-                    socket?.emit(
-                        "IntegratedEventResponse",
-                        requestId,
-                        error ?: JSONObject.NULL
-                    )
-                }
-            }
-        }
+        val ack = EventAck(requestId, eventId, event.options)
+        ack.arm()
         try {
             event.handler(ack)
         } catch (e: Exception) {
@@ -398,6 +454,9 @@ class ShowTrakClient(context: Context) {
                 require(EventOptions.normalizeIconName(icon) != null) {
                     "Event '$eventId' icon must be a Bootstrap Icons name (got '$icon')"
                 }
+            }
+            require(options.timeoutMs > 0) {
+                "Event '$eventId' timeoutMs must be positive (got ${options.timeoutMs})"
             }
         }
 

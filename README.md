@@ -91,6 +91,9 @@ Rules:
 - Registering the same name again replaces the previous handler.
 - Events are published to server after adoption and whenever set changes.
 - `icon` is optional; omit it and the event shows the default `terminal` glyph.
+- A handler that has not called `ack.success()` / `ack.error()` within
+  `timeoutMs` is resolved as `RESOLVED_TIMEOUT`. Do slow work on your own
+  thread and report progress with `ack.feedback()` — see [Ack](#ack).
 
 ### unregisterEvent
 
@@ -158,13 +161,15 @@ EventOptions(
 	label = "Readable Label",  // default: event name
 	colour = 7,                // 0..7, default 7
 	hasFeedback = true,        // default true
-	icon = "circle-fill"       // default "terminal"
+	icon = "circle-fill",      // default "terminal"
+	timeoutMs = 15_000         // default 15_000
 )
 ```
 
 Validation:
 - `colour` must be in range `0..7`.
 - If `label` is provided, it must be non-blank and `<= 80` chars.
+- `timeoutMs` must be between `1_000` and `600_000`.
 - If `icon` is provided, it must be a [Bootstrap Icons](https://icons.getbootstrap.com)
   name: lowercase letters, digits and hyphens, `<= 64` chars. A `bi-` prefix is
   accepted and stripped, so `"bi-terminal"` and `"terminal"` are equivalent.
@@ -189,8 +194,53 @@ Validated inputs include:
 Provided to each event handler:
 - `ack.success()` reports successful completion.
 - `ack.error("reason")` reports failed completion.
+- `ack.feedback("message")` optionally reports progress while the handler runs.
+- `ack.isResolved()` is true once the ack has settled, however it settled.
+- `ack.getStatus()` returns the `AckStatus`.
 
 For `hasFeedback = false`, ack calls are harmless no-ops.
+
+Every method is safe to call from any thread, and every method is a no-op once
+the ack has resolved — a slow handler that finishes late cannot overwrite the
+result the timeout already reported.
+
+#### Progress feedback
+
+`ack.feedback("message")` replaces the status text on this event's row in
+ShowTrak's execution view, leaving the progress bar where it was. It is purely
+optional: an event that never calls it behaves exactly as it always has.
+
+```kotlin
+ShowTrak.registerEvent(
+	"RunDiagnostics",
+	EventOptions(label = "Run Diagnostics", timeoutMs = 20_000)
+) { ack ->
+	backgroundExecutor.execute {          // never block the SDK's callback thread
+		for (step in 1..5) {
+			if (ack.isResolved()) return@execute   // timed out from under us
+			doStep(step)
+			ack.feedback("Step $step of 5 complete")
+		}
+		ack.success()
+	}
+}
+```
+
+Messages are trimmed and capped at 255 characters (longer ones are cut, not
+rejected). Blank messages, calls after the ack has resolved, and calls on a
+`hasFeedback = false` event are all ignored.
+
+#### AckStatus
+
+- `UNRESOLVED` — still running.
+- `RESOLVED_SUCCESS` — `success()` was called.
+- `RESOLVED_ERROR` — `error()` was called, or the handler threw.
+- `RESOLVED_TIMEOUT` — the handler ran past `EventOptions.timeoutMs`.
+
+A handler that has not resolved within `timeoutMs` is resolved for it, and the
+timeout is reported to the server so the operator sees the event fail rather
+than hang. The server arms its own watchdog a few seconds beyond `timeoutMs`,
+so an event whose device disappears mid-run still settles.
 
 ### SDKStatus
 
