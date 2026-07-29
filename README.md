@@ -14,6 +14,8 @@ Connection lifecycle:
 - `connect(context, ip, port, id?)`
 - `disconnect()`
 - `onStateChanged { ... }`
+- `removeStateListener()`
+- `release()`
 - `state: ConnectionState`
 
 Status and metadata getters:
@@ -28,6 +30,7 @@ Status and metadata getters:
 Event registration:
 - `registerEvent(name, options, handler)`
 - `unregisterEvent(name)`
+- `unregisterAllEvents()`
 
 Health reporting:
 - `setState("ONLINE")`
@@ -101,6 +104,27 @@ Rules:
 ShowTrak.unregisterEvent("SetBoxRed")
 ```
 
+### release
+
+```kotlin
+override fun onDestroy() {
+	ShowTrak.release()
+	super.onDestroy()
+}
+```
+
+`ShowTrak` is a process-wide singleton, so anything it holds that captures an
+Activity or Fragment — a state listener, an event handler — keeps that component
+alive after it is destroyed. `release()` performs a full teardown: it
+disconnects, drops the state listener and every event handler, and stops the
+SDK's background thread. A later `connect()` builds a fresh client, so this is
+safe to recover from.
+
+Use the narrower `removeStateListener()` and `unregisterAllEvents()` instead if
+you want to keep the connection alive across the component's lifetime. Note that
+`disconnect()` deliberately does **not** drop listeners, so a consumer that
+reconnects keeps observing.
+
 ### setState
 
 ```kotlin
@@ -119,14 +143,21 @@ Rules:
 
 ```kotlin
 ShowTrak.onStateChanged { state ->
-	// Called off main thread
+	// May run on any thread
 }
 
 val current = ShowTrak.state
+
+ShowTrak.removeStateListener()
 ```
 
 Notes:
-- Callback may run off the main thread; switch to UI thread before touching UI.
+- The listener is invoked immediately with the current state, on the calling
+  thread. Later calls arrive on whichever thread changed the state, so switch to
+  the UI thread before touching UI.
+- Only one listener is held; registering a second replaces the first.
+- A listener that captures an Activity or Fragment must be removed when that
+  component is destroyed — see [release](#release).
 
 ### getStatus and metadata
 

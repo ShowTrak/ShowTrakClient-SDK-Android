@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "io.showtrak.sdk"
-    compileSdk = 34
+    compileSdk = 36
 
     defaultConfig {
         minSdk = 24
@@ -32,7 +32,7 @@ android {
 dependencies {
     // Socket.IO transport (brings engine.io-client + OkHttp). Exposed as `api`
     // so consumers don't need to add it explicitly.
-    api("io.socket:socket.io-client:2.1.0")
+    api("io.socket:socket.io-client:2.1.2")
 }
 
 publishing {

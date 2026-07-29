@@ -61,6 +61,26 @@ object ShowTrak {
     @JvmStatic
     fun unregisterEvent(name: String) = requireClient().unregisterEvent(name)
 
+    /** Remove every registered event. */
+    @JvmStatic
+    fun unregisterAllEvents() = requireClient().unregisterAllEvents()
+
+    /**
+     * Full teardown: disconnect, drop the state listener and every event
+     * handler, and stop the SDK's background thread.
+     *
+     * This object outlives your Activities, so anything it holds that captures
+     * one — a state listener, an event handler — keeps that Activity alive
+     * until it is dropped. Call this (or [removeStateListener] plus
+     * [unregisterAllEvents]) when the owning component is destroyed. A later
+     * [connect] builds a fresh client, so this is safe to call and recover from.
+     */
+    @JvmStatic
+    fun release() {
+        client?.release()
+        client = null
+    }
+
     /**
         * Report health. Only accepts "ONLINE" or "DEGRADED".
         * Invalid values throw [IllegalArgumentException].
@@ -70,10 +90,23 @@ object ShowTrak {
     fun setState(state: String, message: String? = null) =
         requireClient().setState(state, message)
 
-    /** Observe connection lifecycle changes (invoked off the main thread). */
+    /**
+     * Observe connection lifecycle changes. Called immediately with the current
+     * state on the calling thread; later calls arrive on whichever thread
+     * changed it, so marshal to the main thread before touching UI.
+     *
+     * Only one listener is held. Remove it with [removeStateListener] when the
+     * component that owns it is destroyed — see [release].
+     */
     @JvmStatic
     fun onStateChanged(listener: (ConnectionState) -> Unit) =
         requireClient().onStateChanged(listener)
+
+    /** Stop observing connection lifecycle changes. */
+    @JvmStatic
+    fun removeStateListener() {
+        client?.removeStateListener()
+    }
 
     /** Current SDK status snapshot (safe to call before connect). */
     @JvmStatic

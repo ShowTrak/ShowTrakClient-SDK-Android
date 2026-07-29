@@ -70,9 +70,50 @@ class ShowTrakClient(context: Context) {
             field = normalized
         }
 
+    /**
+     * Observe connection lifecycle changes. The listener is invoked immediately
+     * with the current state, on the calling thread; later calls arrive on
+     * whichever thread changed the state.
+     *
+     * Only one listener is held — registering a second replaces the first. A
+     * listener that captures an Activity or Fragment MUST be removed with
+     * [removeStateListener] when that component is destroyed, or this SDK (which
+     * outlives it) will keep it alive.
+     */
     fun onStateChanged(listener: (ConnectionState) -> Unit) {
         stateListener = listener
         listener(state)
+    }
+
+    /**
+     * Drop the state listener. Deliberately not done by [disconnect], so a
+     * consumer that reconnects keeps observing; call it from the owning
+     * component's teardown.
+     */
+    fun removeStateListener() {
+        stateListener = null
+    }
+
+    /** Drop every registered event, publishing the now-empty catalogue. */
+    fun unregisterAllEvents() {
+        events.clear()
+        publishActions()
+    }
+
+    /**
+     * Full teardown: disconnect, drop the listener and every event handler, and
+     * stop the background thread. Use this when the SDK is finished with — an
+     * app being torn down, or a test between cases — rather than [disconnect],
+     * which leaves the client ready to reconnect.
+     *
+     * This instance must not be reused afterwards. Callers going through the
+     * [ShowTrak] facade get a fresh client on the next connect.
+     */
+    fun release() {
+        disconnect()
+        removeStateListener()
+        events.clear()
+        scheduler.shutdownNow()
     }
 
     fun connect(ip: String, port: Int, id: String?) {
@@ -115,9 +156,16 @@ class ShowTrakClient(context: Context) {
         updateConnectionState(ConnectionState.DISCONNECTED)
     }
 
+    /**
+     * Register (or replace) an event an operator can trigger.
+     *
+     * The handler runs on the Socket.IO callback thread: hand slow work to a
+     * thread of your own and resolve the [Ack] from there, or heartbeats stall
+     * behind it. [EventOptions] validates itself on construction, so an invalid
+     * option throws before it reaches this call.
+     */
     fun registerEvent(name: String, options: EventOptions, handler: (Ack) -> Unit) {
         val id = validateEventId(name)
-        validateEventOptions(options, id)
         events[id] = RegisteredEvent(id, options, handler)
         publishActions()
     }
@@ -258,6 +306,7 @@ class ShowTrakClient(context: Context) {
                     .put("Version", appVersion)
                 s.emit("AdoptionHeartbeat", payload)
             } catch (_: Exception) {
+                // Best-effort, like the heartbeat: never crash the host app.
             }
         }, 0, 2, TimeUnit.SECONDS)
     }
@@ -380,7 +429,6 @@ class ShowTrakClient(context: Context) {
         private const val GENERATED_ID_KEY = "generated_client_id"
         private const val MAX_CLIENT_ID_LENGTH = 128
         private const val MAX_HOST_LENGTH = 253
-        private const val MAX_EVENT_LABEL_LENGTH = 80
         private const val MAX_STATE_MESSAGE_LENGTH = 256
         private const val MAX_HOSTNAME_LENGTH = 128
         private const val MAX_APP_VERSION_LENGTH = 64
@@ -434,30 +482,6 @@ class ShowTrakClient(context: Context) {
                 "Event name must match ^[A-Za-z0-9_.-]+$ (got '$rawName')"
             }
             return id
-        }
-
-        private fun validateEventOptions(options: EventOptions, eventId: String) {
-            require(options.colour in 0..7) {
-                "Event '$eventId' colour must be between 0 and 7"
-            }
-            val label = options.label?.trim()
-            if (options.label != null) {
-                require(!label.isNullOrEmpty()) {
-                    "Event '$eventId' label cannot be blank when provided"
-                }
-                require(label.length <= MAX_EVENT_LABEL_LENGTH) {
-                    "Event '$eventId' label must be <= $MAX_EVENT_LABEL_LENGTH characters"
-                }
-            }
-            val icon = options.icon
-            if (icon != null) {
-                require(EventOptions.normalizeIconName(icon) != null) {
-                    "Event '$eventId' icon must be a Bootstrap Icons name (got '$icon')"
-                }
-            }
-            require(options.timeoutMs > 0) {
-                "Event '$eventId' timeoutMs must be positive (got ${options.timeoutMs})"
-            }
         }
 
         private fun validatePort(port: Int) {
