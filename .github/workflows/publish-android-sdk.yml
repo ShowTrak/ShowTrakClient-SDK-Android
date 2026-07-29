@@ -12,6 +12,17 @@ on:
         required: true
         default: true
         type: boolean
+      targets:
+        description: >-
+          Where to publish. Use a single target to retry one destination
+          without re-attempting a release that already went out.
+        required: true
+        default: both
+        type: choice
+        options:
+          - both
+          - central
+          - packages
   push:
     tags:
       - 'v*.*.*'
@@ -48,12 +59,16 @@ jobs:
         id: version
         shell: bash
         run: |
+          # A tag push is always a full release; a manual run may target one
+          # destination, which is how a half-failed release gets finished.
           if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
             VERSION="${GITHUB_REF_NAME#v}"
             DRY_RUN="false"
+            TARGETS="both"
           else
             VERSION="${{ github.event.inputs.version }}"
             DRY_RUN="${{ github.event.inputs.dry_run }}"
+            TARGETS="${{ github.event.inputs.targets }}"
           fi
 
           if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z]+)*$ ]]; then
@@ -61,8 +76,17 @@ jobs:
             exit 1
           fi
 
+          case "$TARGETS" in
+            both) CENTRAL="true"; PACKAGES="true" ;;
+            central) CENTRAL="true"; PACKAGES="false" ;;
+            packages) CENTRAL="false"; PACKAGES="true" ;;
+            *) echo "Invalid targets: $TARGETS" >&2; exit 1 ;;
+          esac
+
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "dry_run=$DRY_RUN" >> "$GITHUB_OUTPUT"
+          echo "central=$CENTRAL" >> "$GITHUB_OUTPUT"
+          echo "packages=$PACKAGES" >> "$GITHUB_OUTPUT"
 
       - name: Validate release build
         run: >-
@@ -73,7 +97,7 @@ jobs:
           --stacktrace
 
       - name: Publish to Maven Central
-        if: steps.version.outputs.dry_run != 'true'
+        if: steps.version.outputs.dry_run != 'true' && steps.version.outputs.central == 'true'
         run: >-
           ./gradlew
           publishAndReleaseToMavenCentral
@@ -81,7 +105,7 @@ jobs:
           --stacktrace
 
       - name: Publish to GitHub Packages
-        if: steps.version.outputs.dry_run != 'true'
+        if: steps.version.outputs.dry_run != 'true' && steps.version.outputs.packages == 'true'
         run: >-
           ./gradlew
           :showtrak-sdk:publishMavenPublicationToGitHubPackagesRepository
