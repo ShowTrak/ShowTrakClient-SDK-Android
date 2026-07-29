@@ -39,7 +39,10 @@ publishing {
     repositories {
         maven {
             name = "GitHubPackages"
-            url = uri("https://maven.pkg.github.com/ShowTrak/ShowTrak-SDK-Android")
+            // The package registry does not follow the repository rename
+            // redirect that git pushes get, so this must name the current
+            // repository exactly or every upload 404s.
+            url = uri("https://maven.pkg.github.com/ShowTrak/ShowTrakClient-SDK-Android")
             credentials {
                 username = project.providers.gradleProperty("gprUser").orElse("").get()
                 password = project.providers.gradleProperty("gprToken").orElse("").get()
