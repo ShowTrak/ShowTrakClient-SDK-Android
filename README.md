@@ -77,7 +77,8 @@ ShowTrak.registerEvent(
 	options = EventOptions(
 		label = "Set Box Red",
 		colour = 0,
-		hasFeedback = true
+		hasFeedback = true,
+		icon = "circle-fill"
 	)
 ) { ack ->
 	// Perform action
@@ -89,6 +90,7 @@ Rules:
 - Event name must match `^[A-Za-z0-9_.-]+$`.
 - Registering the same name again replaces the previous handler.
 - Events are published to server after adoption and whenever set changes.
+- `icon` is optional; omit it and the event shows the default `terminal` glyph.
 
 ### unregisterEvent
 
@@ -153,15 +155,23 @@ val events = ShowTrak.getRegisteredEventIds()
 
 ```kotlin
 EventOptions(
-	label = "Readable Label", // default: event name
+	label = "Readable Label",  // default: event name
 	colour = 7,                // 0..7, default 7
-	hasFeedback = true         // default true
+	hasFeedback = true,        // default true
+	icon = "circle-fill"       // default "terminal"
 )
 ```
 
 Validation:
 - `colour` must be in range `0..7`.
 - If `label` is provided, it must be non-blank and `<= 80` chars.
+- If `icon` is provided, it must be a [Bootstrap Icons](https://icons.getbootstrap.com)
+  name: lowercase letters, digits and hyphens, `<= 64` chars. A `bi-` prefix is
+  accepted and stripped, so `"bi-terminal"` and `"terminal"` are equivalent.
+
+Icons are optional in both directions. An event registered without one is
+published with the default `terminal` glyph, and a server built before icons
+existed ignores the field entirely — so upgrading either side alone is safe.
 
 ## Validation and Errors
 
@@ -209,7 +219,10 @@ class MainActivity : AppCompatActivity() {
 
 		ShowTrak.connect(applicationContext, ip = "10.0.2.2", port = 3000)
 
-		ShowTrak.registerEvent("SetBoxBlue", EventOptions("Set Box Blue", colour = 2)) { ack ->
+		ShowTrak.registerEvent(
+			"SetBoxBlue",
+			EventOptions("Set Box Blue", colour = 2, icon = "droplet-fill")
+		) { ack ->
 			runOnUiThread {
 				// update UI
 				ack.success()

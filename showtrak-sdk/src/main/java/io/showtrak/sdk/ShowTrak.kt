@@ -8,7 +8,10 @@ import android.content.Context
  * Typical usage:
  * ```
  * ShowTrak.connect(context, "10.0.0.10", 3000)            // ID auto-generated + persisted
- * ShowTrak.registerEvent("SetBoxRed", EventOptions("Set Box Red", colour = 0)) { ack ->
+ * ShowTrak.registerEvent(
+ *     "SetBoxRed",
+ *     EventOptions("Set Box Red", colour = 0, icon = "circle-fill"),
+ * ) { ack ->
  *     // ... perform the action ...
  *     ack.success()
  * }

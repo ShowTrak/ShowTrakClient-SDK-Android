@@ -217,6 +217,10 @@ class ShowTrakClient(context: Context) {
                     .put("ID", event.id)
                     .put("Label", event.options.label ?: event.id)
                     .put("ColourIndex", event.options.colour)
+                    // Always sent: events without a chosen icon publish the
+                    // default glyph, which is what older servers would have
+                    // drawn for them anyway.
+                    .put("Icon", event.options.resolvedIcon)
                     .put("HasFeedback", event.options.hasFeedback)
             )
         }
@@ -387,6 +391,12 @@ class ShowTrakClient(context: Context) {
                 }
                 require(label.length <= MAX_EVENT_LABEL_LENGTH) {
                     "Event '$eventId' label must be <= $MAX_EVENT_LABEL_LENGTH characters"
+                }
+            }
+            val icon = options.icon
+            if (icon != null) {
+                require(EventOptions.normalizeIconName(icon) != null) {
+                    "Event '$eventId' icon must be a Bootstrap Icons name (got '$icon')"
                 }
             }
         }
