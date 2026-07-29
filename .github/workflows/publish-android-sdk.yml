@@ -111,3 +111,29 @@ jobs:
           :showtrak-sdk:publishMavenPublicationToGitHubPackagesRepository
           -PVERSION_NAME=${{ steps.version.outputs.version }}
           --stacktrace
+      # publishAndReleaseToMavenCentral only hands the bundle to the Sonatype
+      # Central Portal and returns; validation, publishing and the sync to
+      # repo1 all happen afterwards. Without this gate the job goes green while
+      # the artifact is still unresolvable — or never appears at all, because a
+      # deployment that fails validation does so silently, long after the run.
+      - name: Wait for Maven Central
+        if: steps.version.outputs.dry_run != 'true' && steps.version.outputs.central == 'true'
+        shell: bash
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          TIMEOUT_SECONDS: '2700'
+        run: |
+          GROUP="$(sed -n 's/^GROUP=//p' gradle.properties)"
+          ARTIFACT="$(sed -n 's/^POM_ARTIFACT_ID=//p' gradle.properties)"
+          BASE="https://repo1.maven.org/maven2/${GROUP//.//}/${ARTIFACT}/${VERSION}/${ARTIFACT}-${VERSION}"
+
+          echo "Waiting for ${GROUP}:${ARTIFACT}:${VERSION} to resolve from Maven Central"
+          until curl -sfI "${BASE}.pom" >/dev/null && curl -sfI "${BASE}.aar" >/dev/null; do
+            if [ "$SECONDS" -ge "$TIMEOUT_SECONDS" ]; then
+              echo "::error::${VERSION} was accepted by the Central Portal but did not reach repo1.maven.org within $((TIMEOUT_SECONDS / 60)) minutes. Check its deployment state at https://central.sonatype.com/publishing/deployments — a failed validation never syncs."
+              exit 1
+            fi
+            echo "  not yet (${SECONDS}s elapsed)"
+            sleep 30
+          done
+          echo "${VERSION} is live on Maven Central after ${SECONDS}s"
