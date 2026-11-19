@@ -1,0 +1,3 @@
+# Formatting-only commits, hidden from git blame (git config blame.ignoreRevsFile .git-blame-ignore-revs).
+# Format the Kotlin sources with ktlint
+16434b8f1d64d578af6fb57397d000985068049c
