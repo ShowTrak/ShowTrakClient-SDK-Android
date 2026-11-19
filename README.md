@@ -1,6 +1,27 @@
+<div align="center">
+
+<a href="https://showtrak.co.uk"><img src="https://showtrak.co.uk/images/logo.png" alt="ShowTrak Android SDK logo" width="128" height="128"></a>
+
 # ShowTrak Android SDK
 
-Reusable Android SDK for ShowTrak integrated clients.
+**Monitor and control your own Android app from ShowTrak Server.**
+
+[Website](https://showtrak.co.uk) · [Maven Central](https://central.sonatype.com/artifact/io.github.showtrak/showtrak-sdk) · [Demo app](https://github.com/ShowTrak/ShowTrak-SDK-Android-Demo) · [Discord](https://discord.gg/DACmwsbSGW)
+
+[![Android 7.0+][badge-android7]](https://showtrak.co.uk) [![Kotlin][badge-kotlin]](https://showtrak.co.uk)
+
+</div>
+
+Add a few lines to an Android app (a kiosk, a game, an interactive) and it shows up in
+[ShowTrak Server](https://github.com/ShowTrak/ShowTrakServer) beside your computers: adopt it with one
+click, watch its status, and trigger its actions from the desk, QLab or a Stream Deck.
+
+## Key features
+
+- **Shows up like any other client**: discovered and adopted in ShowTrak Server, with online, offline and degraded status.
+- **Your own actions**: register actions with a name, icon and colour, and run them from ShowTrak Server, OSC or HTTP.
+- **Progress feedback**: report progress and success or failure back to the operator.
+- **Health reporting**: tell the server when your app is degraded and why.
 
 ## Module
 
@@ -355,7 +376,7 @@ This keeps a single SDK source of truth shared across repos.
 
 ## Maven Central
 
-When the SDK is published, consume it like this:
+The SDK is published to Maven Central:
 
 ```kotlin
 repositories {
@@ -364,6 +385,24 @@ repositories {
 }
 
 dependencies {
-	implementation("io.github.showtrak:showtrak-sdk:1.0.2")
+	implementation("io.github.showtrak:showtrak-sdk:1.3.0")
 }
 ```
+
+## Part of ShowTrak
+
+| App | What it does |
+| --- | --- |
+| **[ShowTrak Server](https://showtrak.co.uk/software/server)** | Monitor and control every computer and show device from one screen. |
+| **[ShowTrak Client](https://showtrak.co.uk/software/client)** | The lightweight app that lets ShowTrak Server watch and control a computer. |
+| **[ShowTrak Timers](https://showtrak.co.uk/software/timers)** | Show timers run from the desk, a Stream Deck, QLab or any browser. |
+| **[ShowTrak Portal](https://showtrak.co.uk)** | Show reports, schedules and team collaboration for live productions. |
+
+Find everything at **[showtrak.co.uk](https://showtrak.co.uk)**.
+
+## Support
+
+Questions, ideas or problems? Join the [ShowTrak Discord](https://discord.gg/DACmwsbSGW) or [open an issue](https://github.com/ShowTrak/ShowTrakClient-SDK-Android/issues).
+
+[badge-android7]: https://img.shields.io/badge/Android%207.0%2B-3DDC84?style=for-the-badge&logo=android&logoColor=white
+[badge-kotlin]: https://img.shields.io/badge/Kotlin-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white
