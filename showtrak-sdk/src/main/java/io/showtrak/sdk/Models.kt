@@ -19,7 +19,7 @@ data class EventOptions @JvmOverloads constructor(
     val colour: Int = 7,
     val hasFeedback: Boolean = true,
     val icon: String? = null,
-    val timeoutMs: Long = DEFAULT_TIMEOUT_MS,
+    val timeoutMs: Long = DEFAULT_TIMEOUT_MS
 ) {
     init {
         require(colour in 0..7) { "EventOptions.colour must be between 0 and 7" }
@@ -96,7 +96,7 @@ enum class AckStatus {
     RESOLVED_ERROR,
 
     /** The handler ran past [EventOptions.timeoutMs] without resolving. */
-    RESOLVED_TIMEOUT,
+    RESOLVED_TIMEOUT
 }
 
 /**
@@ -144,7 +144,7 @@ enum class ConnectionState {
     DISCONNECTED,
     CONNECTING,
     PENDING_ADOPTION,
-    ONLINE,
+    ONLINE
 }
 
 /** Immutable snapshot of current SDK runtime state. */
@@ -159,5 +159,5 @@ data class SDKStatus(
     val degradedMessage: String?,
     val serverHost: String?,
     val serverPort: Int?,
-    val registeredEventIds: List<String>,
+    val registeredEventIds: List<String>
 )

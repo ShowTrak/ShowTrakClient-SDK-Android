@@ -3,9 +3,9 @@ package io.showtrak.sdk
 import android.app.ActivityManager
 import android.content.Context
 import android.os.SystemClock
-import org.json.JSONObject
 import java.io.RandomAccessFile
 import java.util.Locale
+import org.json.JSONObject
 
 /**
  * Collects real device metrics for the heartbeat. The SDK never fabricates
@@ -27,30 +27,28 @@ internal class MetricsCollector(context: Context) {
         ramUsage()?.let { vitals.put("Ram", it) }
         vitals.put(
             "Uptime",
-            JSONObject().put("Formatted", formatUptime(SystemClock.elapsedRealtime() / 1000)),
+            JSONObject().put("Formatted", formatUptime(SystemClock.elapsedRealtime() / 1000))
         )
         return vitals
     }
 
-    private fun ramUsage(): JSONObject? {
-        return try {
-            val am = appContext.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-            val info = ActivityManager.MemoryInfo()
-            am.getMemoryInfo(info)
-            val total = info.totalMem
-            val used = info.totalMem - info.availMem
-            val percent = if (total > 0) used.toDouble() / total.toDouble() * 100.0 else 0.0
-            // Field names and types are fixed by RamVitals in the ShowTrak wire
-            // protocol: bytes as numbers, and the percentage as a two-decimal
-            // STRING. Sending a number here fails the server's heartbeat
-            // validation outright, which silently leaves the device offline.
-            JSONObject()
-                .put("Total", total)
-                .put("Used", used)
-                .put("UsagePercentage", String.format(Locale.US, "%.2f", percent))
-        } catch (_: Exception) {
-            null
-        }
+    private fun ramUsage(): JSONObject? = try {
+        val am = appContext.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        val info = ActivityManager.MemoryInfo()
+        am.getMemoryInfo(info)
+        val total = info.totalMem
+        val used = info.totalMem - info.availMem
+        val percent = if (total > 0) used.toDouble() / total.toDouble() * 100.0 else 0.0
+        // Field names and types are fixed by RamVitals in the ShowTrak wire
+        // protocol: bytes as numbers, and the percentage as a two-decimal
+        // STRING. Sending a number here fails the server's heartbeat
+        // validation outright, which silently leaves the device offline.
+        JSONObject()
+            .put("Total", total)
+            .put("Used", used)
+            .put("UsagePercentage", String.format(Locale.US, "%.2f", percent))
+    } catch (_: Exception) {
+        null
     }
 
     /** Uptime as `HH:mm:ss`, matching UptimeVitals in the wire protocol. */
@@ -61,7 +59,7 @@ internal class MetricsCollector(context: Context) {
             "%02d:%02d:%02d",
             safe / 3600,
             (safe % 3600) / 60,
-            safe % 60,
+            safe % 60
         )
     }
 

@@ -4,23 +4,19 @@ import android.content.Context
 import android.os.Build
 import io.socket.client.IO
 import io.socket.client.Socket
-import org.json.JSONArray
-import org.json.JSONObject
-import java.util.Locale
 import java.net.URISyntaxException
 import java.net.URLEncoder
+import java.util.Locale
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
+import org.json.JSONArray
+import org.json.JSONObject
 
-internal class RegisteredEvent(
-    val id: String,
-    val options: EventOptions,
-    val handler: (Ack) -> Unit,
-)
+internal class RegisteredEvent(val id: String, val options: EventOptions, val handler: (Ack) -> Unit)
 
 /**
  * Owns the Socket.IO connection and the full integrated-client protocol:
@@ -196,21 +192,19 @@ class ShowTrakClient(context: Context) {
 
     fun getRegisteredEventIds(): List<String> = events.keys().toList().sorted()
 
-    fun getStatus(): SDKStatus {
-        return SDKStatus(
-            connectionState = state,
-            connected = isConnected(),
-            adopted = adopted,
-            clientId = getClientId(),
-            hostname = hostname,
-            appVersion = appVersion,
-            desiredState = desiredState,
-            degradedMessage = degradedMessage,
-            serverHost = serverHost,
-            serverPort = serverPort,
-            registeredEventIds = getRegisteredEventIds(),
-        )
-    }
+    fun getStatus(): SDKStatus = SDKStatus(
+        connectionState = state,
+        connected = isConnected(),
+        adopted = adopted,
+        clientId = getClientId(),
+        hostname = hostname,
+        appVersion = appVersion,
+        desiredState = desiredState,
+        degradedMessage = degradedMessage,
+        serverHost = serverHost,
+        serverPort = serverPort,
+        registeredEventIds = getRegisteredEventIds()
+    )
 
     // --- Socket wiring -------------------------------------------------------
 
@@ -319,7 +313,7 @@ class ShowTrakClient(context: Context) {
     private inner class EventAck(
         override val requestId: String,
         override val eventId: String,
-        private val options: EventOptions,
+        private val options: EventOptions
     ) : Ack {
 
         private val lock = Any()
@@ -336,7 +330,7 @@ class ShowTrakClient(context: Context) {
                     )
                 },
                 options.timeoutMs,
-                TimeUnit.MILLISECONDS,
+                TimeUnit.MILLISECONDS
             )
             synchronized(lock) {
                 // A handler that resolved before we got here must not leave a
@@ -364,7 +358,7 @@ class ShowTrakClient(context: Context) {
             socket?.takeIf { it.connected() }?.emit(
                 "IntegratedEventFeedback",
                 requestId,
-                text.take(EventOptions.MAX_FEEDBACK_LENGTH),
+                text.take(EventOptions.MAX_FEEDBACK_LENGTH)
             )
         }
 

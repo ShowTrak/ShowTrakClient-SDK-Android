@@ -51,11 +51,8 @@ object ShowTrak {
     /** Register (or replace) an event the operator can trigger. */
     @JvmStatic
     @JvmOverloads
-    fun registerEvent(
-        name: String,
-        options: EventOptions = EventOptions(),
-        handler: (Ack) -> Unit,
-    ) = requireClient().registerEvent(name, options, handler)
+    fun registerEvent(name: String, options: EventOptions = EventOptions(), handler: (Ack) -> Unit) =
+        requireClient().registerEvent(name, options, handler)
 
     /** Remove a previously registered event. */
     @JvmStatic
@@ -82,13 +79,12 @@ object ShowTrak {
     }
 
     /**
-        * Report health. Only accepts "ONLINE" or "DEGRADED".
-        * Invalid values throw [IllegalArgumentException].
+     * Report health. Only accepts "ONLINE" or "DEGRADED".
+     * Invalid values throw [IllegalArgumentException].
      */
     @JvmStatic
     @JvmOverloads
-    fun setState(state: String, message: String? = null) =
-        requireClient().setState(state, message)
+    fun setState(state: String, message: String? = null) = requireClient().setState(state, message)
 
     /**
      * Observe connection lifecycle changes. Called immediately with the current
@@ -99,8 +95,7 @@ object ShowTrak {
      * component that owns it is destroyed — see [release].
      */
     @JvmStatic
-    fun onStateChanged(listener: (ConnectionState) -> Unit) =
-        requireClient().onStateChanged(listener)
+    fun onStateChanged(listener: (ConnectionState) -> Unit) = requireClient().onStateChanged(listener)
 
     /** Stop observing connection lifecycle changes. */
     @JvmStatic
@@ -110,21 +105,20 @@ object ShowTrak {
 
     /** Current SDK status snapshot (safe to call before connect). */
     @JvmStatic
-    fun getStatus(): SDKStatus =
-        client?.getStatus()
-            ?: SDKStatus(
-                connectionState = ConnectionState.DISCONNECTED,
-                connected = false,
-                adopted = false,
-                clientId = null,
-                hostname = "",
-                appVersion = "",
-                desiredState = "ONLINE",
-                degradedMessage = null,
-                serverHost = null,
-                serverPort = null,
-                registeredEventIds = emptyList(),
-            )
+    fun getStatus(): SDKStatus = client?.getStatus()
+        ?: SDKStatus(
+            connectionState = ConnectionState.DISCONNECTED,
+            connected = false,
+            adopted = false,
+            clientId = null,
+            hostname = "",
+            appVersion = "",
+            desiredState = "ONLINE",
+            degradedMessage = null,
+            serverHost = null,
+            serverPort = null,
+            registeredEventIds = emptyList()
+        )
 
     /** Resolved client ID after connect, or null if not initialized yet. */
     @JvmStatic
