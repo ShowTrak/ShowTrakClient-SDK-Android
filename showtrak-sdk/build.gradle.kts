@@ -73,7 +73,9 @@ mavenPublishing {
         licenses {
             license {
                 name.set(project.providers.gradleProperty("POM_LICENSE_NAME").orElse("MIT License"))
-                url.set(project.providers.gradleProperty("POM_LICENSE_URL").orElse("https://opensource.org/licenses/MIT"))
+                url.set(
+                    project.providers.gradleProperty("POM_LICENSE_URL").orElse("https://opensource.org/licenses/MIT")
+                )
             }
         }
 
@@ -85,7 +87,11 @@ mavenPublishing {
         }
 
         scm {
-            url.set(project.providers.gradleProperty("POM_SCM_URL").orElse("https://github.com/ShowTrak/ShowTrak-SDK-Android"))
+            url.set(
+                project.providers.gradleProperty(
+                    "POM_SCM_URL"
+                ).orElse("https://github.com/ShowTrak/ShowTrak-SDK-Android")
+            )
             connection.set(
                 project.providers.gradleProperty("POM_SCM_CONNECTION")
                     .orElse("scm:git:git://github.com/ShowTrak/ShowTrak-SDK-Android.git")
